@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func output(args ...string) (string, error) {
+func Output(args ...string) (string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	stderr := bytes.Buffer{}
 	cmd.Stderr = &stderr
@@ -20,12 +20,12 @@ func output(args ...string) (string, error) {
 }
 
 func currentContext() (string, error) {
-	out, err := output("kubectl", "config", "current-context")
+	out, err := Output("kubectl", "config", "current-context")
 	return strings.TrimSpace(out), err
 }
 
 func connect() error {
-	out, err := output("telepresence", "connect")
+	out, err := Output("telepresence", "connect")
 	if err != nil {
 		return err
 	}
@@ -36,12 +36,24 @@ func connect() error {
 }
 
 func uninstall() error {
-	out, err := output("telepresence", "uninstall", "-e")
+	out, err := Output("telepresence", "uninstall", "-e")
 	if err != nil {
 		return err
 	}
 	if !strings.Contains(out, "Telepresence Root Daemon quitting... done") {
 		return errors.New(out)
+	}
+	return nil
+}
+
+func freshDocClu() error {
+	_, err := Output("kubectl", "delete", "clusterrolebinding", "docker-for-desktop-binding")
+	if err != nil {
+		return err
+	}
+	_, err = Output("kubectl", "create", "ns", "ambassador")
+	if err != nil {
+		return err
 	}
 	return nil
 }

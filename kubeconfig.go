@@ -13,10 +13,10 @@ func (kc *kubeconfig) setup() *kubeconfig {
 }
 
 func (kc *kubeconfig) cleanup() error {
-	_, err := output("kubectl", "config", "use-context", kc.userContext)
+	_, err := Output("kubectl", "config", "use-context", kc.userContext)
 	if err != nil {
 		return err
 	}
-	_, err = output("kubectl", "config", "delete-context", kc.testContext)
+	_, err = Output("kubectl", "config", "delete-context", kc.testContext)
 	return err
 }

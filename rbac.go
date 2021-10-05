@@ -2,19 +2,21 @@ package cmd
 
 import (
 	"encoding/base64"
+	"errors"
+	"strings"
 )
 
 func makeUser(kc *kubeconfig, path string) error {
-	_, err := output("kubectl", "apply", "-f", path)
+	_, err := Output("kubectl", "apply", "-f", path)
 	if err != nil {
 		return err
 	}
 
-	secret, err := output("kubectl", "get", "sa", kc.testContext, "-o", "jsonpath={.secrets[0].name}")
+	secret, err := Output("kubectl", "get", "sa", kc.testContext, "-o", "jsonpath={.secrets[0].name}")
 	if err != nil {
 		return err
 	}
-	encSecret, err := output("kubectl", "get", "secret", secret, "-o", "jsonpath={.data.token}")
+	encSecret, err := Output("kubectl", "get", "secret", secret, "-o", "jsonpath={.data.token}")
 	if err != nil {
 		return err
 	}
@@ -22,17 +24,17 @@ func makeUser(kc *kubeconfig, path string) error {
 	if err != nil {
 		return err
 	}
-	_, err = output("kubectl", "config", "set-credentials", kc.testContext, "--token", string(token))
+	_, err = Output("kubectl", "config", "set-credentials", kc.testContext, "--token", string(token))
 	if err != nil {
 		return err
 	}
 
-	_, err = output("kubectl", "config", "set-context", kc.testContext, "--user", kc.testContext, "--cluster", kc.userContext)
+	_, err = Output("kubectl", "config", "set-context", kc.testContext, "--user", kc.testContext, "--cluster", kc.userContext)
 	if err != nil {
 		return err
 	}
 
-	_, err = output("kubectl", "config", "use-context", kc.testContext)
+	_, err = Output("kubectl", "config", "use-context", kc.testContext)
 	if err != nil {
 		return err
 	}
@@ -46,15 +48,15 @@ func delUser(kc *kubeconfig) error {
 		return err
 	}
 
-	_, err = output("kubectl", "delete", "ClusterRole", "telepresence-role")
+	_, err = Output("kubectl", "delete", "ClusterRole", "telepresence-role")
 	if err != nil {
 		return err
 	}
-	_, err = output("kubectl", "delete", "ServiceAccount", kc.testContext)
+	_, err = Output("kubectl", "delete", "ServiceAccount", kc.testContext)
 	if err != nil {
 		return err
 	}
-	_, err = output("kubectl", "delete", "ClusterRoleBinding", "telepresence-clusterrolebinding")
+	_, err = Output("kubectl", "delete", "ClusterRoleBinding", "telepresence-clusterrolebinding")
 	if err != nil {
 		return err
 	}
@@ -66,16 +68,46 @@ func tryConnect() error {
 	if err != nil {
 		return err
 	}
+
 	return uninstall()
 }
 
-func tryHelm() error {
-	_, err := output("helm", "install", "traffic-manager", "-n", "ambassador", "datawire/telepresence")
+func smokeTest() error {
+	out, err := Output("run_smoke_test.sh")
 	if err != nil {
 		return err
 	}
-	_, err = output("helm", "uninstall", "traffic-manager", "-n", "ambassador")
+	if !strings.Contains(out, "has been smoke tested and took") {
+		return errors.New(out)
+	}
+	return nil
+}
+
+func tryHelm() error {
+	_, err := Output("helm", "install", "traffic-manager", "-n", "ambassador", "datawire/telepresence")
 	if err != nil {
+		return err
+	}
+	_, err = Output("helm", "uninstall", "traffic-manager", "-n", "ambassador")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func Full() error {
+	kc := kubeconfig{}
+	kc.setup()
+	if err := freshDocClu(); err != nil {
+		return err
+	}
+	if err := makeUser(&kc, "client_rbac.yaml"); err != nil {
+		return err
+	}
+	if err := tryConnect(); err != nil {
+		return err
+	}
+	if err := delUser(&kc); err != nil {
 		return err
 	}
 	return nil

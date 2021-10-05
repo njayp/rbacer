@@ -13,6 +13,9 @@ func TestCurrentContext(t *testing.T) {
 func TestHelm(t *testing.T) {
 	kc := kubeconfig{}
 	kc.setup()
+	if err := freshDocClu(); err != nil {
+		t.Fatal(err)
+	}
 	if err := makeUser(&kc, "client_rbac.yaml"); err != nil {
 		t.Error(err)
 	}
@@ -24,9 +27,24 @@ func TestHelm(t *testing.T) {
 	}
 }
 
+func TestSmoke(t *testing.T) {
+	kc := kubeconfig{}
+	kc.setup()
+	kc.cleanup()
+	if err := freshDocClu(); err != nil {
+		t.Fatal(err)
+	}
+	if err := makeUser(&kc, "client_rbac.yaml"); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestMain(t *testing.T) {
 	kc := kubeconfig{}
 	kc.setup()
+	if err := freshDocClu(); err != nil {
+		t.Fatal(err)
+	}
 	if err := makeUser(&kc, "client_rbac.yaml"); err != nil {
 		t.Error(err)
 	}
